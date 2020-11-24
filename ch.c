@@ -10,8 +10,8 @@
 
 int main()
 {  
-char vet[32];
-char msg[16];
+char vet[256];
+char msg[128];
 int i,batata;
     int fd = open(PATH, O_CREAT | O_WRONLY | O_TRUNC, 0666);
     printf("Invoking 'listProcessInfo' system call\n");
@@ -21,10 +21,10 @@ int i,batata;
 	
 	batata=strlen(msg);
 	
-	for(i=strlen(msg); i<16;i++){
+	for(i=strlen(msg); i<128;i++){
 	msg[i]='0';	
 	}
-	msg[16]='\0';
+	msg[128]='\0';
          
     ssize_t ret_status = syscall(333, fd, msg , batata); 
 

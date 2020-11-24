@@ -28,7 +28,7 @@ static char key[16] = "abcdefghijklmnop";
 static char iv[16] = "abcdefghijklmnop"; 
 
 
-char encript[32];
+char encript[256];
 static int  majorNumber;
 static char   message[256] = {0};           ///< Memory for the string that is passed from userspace
 static short  size_of_message;              ///< Used to remember the size of the string stored
@@ -94,6 +94,12 @@ static unsigned int test_skcipher_encdec(struct skcipher_def *sk, int enc)
     return rc;
 }
 
+int numeroDeBlocos(int tamanho_msg){
+	if(tamanho_msg % 16 == 0){
+		return tamanho_msg/16;
+	}
+	else return (tamanho_msg/16) +1;
+}
 
 /* Initialize and trigger cipher operation */
 static int test_skcipher(int size, char *varEncript, char option)
@@ -139,18 +145,24 @@ static int test_skcipher(int size, char *varEncript, char option)
     
 
     /* Input data will be random */
-    scratchpad = vmalloc(16);
+    scratchpad = vmalloc(256);
+    memset(scratchpad, 0, 256);
+
     if (!scratchpad) {
         pr_info("could not allocate scratchpad\n");
         goto out;
     }
-    memcpy(scratchpad, varEncript,16);
+    memcpy(scratchpad, varEncript,256);
+    memset(varEncript, 0, 256);
 
     sk.tfm = skcipher;
     sk.req = req;
-
+    int i=0;
+    char *resultdata;
+	printk(KERN_INFO"\n TAMANHO: %d ",size_of_message);
+	for(i=0; i < numeroDeBlocos(size_of_message); i++){
     /* We encrypt one block */
-    sg_init_one(&sk.sg, scratchpad, 16);
+    sg_init_one(&sk.sg, scratchpad+(i*16), 16);
     skcipher_request_set_crypt(req, &sk.sg, &sk.sg, 16, ivdata);
     init_completion(&sk.result.completion);
 
@@ -164,12 +176,15 @@ static int test_skcipher(int size, char *varEncript, char option)
     
     if (ret)
         goto out;
-    char *resultdata = sg_virt(&sk.sg);
+        resultdata = sg_virt(&sk.sg);
 
-//print_hex_dump(KERN_DEBUG, "texto: ", DUMP_PREFIX_NONE, 16,1, resultdata, 16, true);
-memcpy(encript, resultdata, 16);
+	//print_hex_dump(KERN_DEBUG, "texto: ", DUMP_PREFIX_NONE, 16,1, resultdata, 16, true);
+	printk(KERN_INFO"\n RESULTDATA: %s , i=%d",resultdata,i);
+    memcpy(encript+(i*16), resultdata, 16);
+} // fim do for
+
 int w=0;
-while(w<strlen(resultdata)){printk(KERN_INFO "Encriptedddd: %x", resultdata[w]); w++;}
+
     pr_info("Encryption triggered successfully\n");
 
 out:
@@ -189,7 +204,7 @@ out:
 void converter(char* vet){
 int i=0, j=0;
 unsigned char num;
-while(i<16){
+while(i<128){
 num=(unsigned char)encript[i]/16;
 if(num>9) {num= num + 87;}
 else{num=num +'0';}
@@ -209,7 +224,7 @@ j++;
 void hex_to_string( char vet[], char result[] )
 {
     int pos=0,i=0,valor=0;
-    while(pos<32)
+    while(pos<256)
     {
 
         if(vet[pos]>=97 && vet[pos]<=122)
@@ -249,36 +264,37 @@ void hex_to_string( char vet[], char result[] )
 }
 
 asmlinkage ssize_t write_cript(int fd, const void *buf, size_t nbytes) {
-    char vet[32];
+    char vet[256];
     mm_segment_t oldfs;
     int ret;
 
+    size_of_message = nbytes;
     oldfs = get_fs();
     set_fs(get_ds());
 
-test_skcipher(16, buf, 'e');
+test_skcipher(128, buf, 'e');
 converter(vet);
-ret = sys_write(fd, vet, 32);
+ret = sys_write(fd, vet, 256);
     set_fs(oldfs);
 
 printk("VALOR: [ %s ]\n", vet);
-  
+
   return 0;
 }
 
 asmlinkage ssize_t read_cript(int fd, void *buf, size_t nbytes) {
 char *aux = buf;
-unsigned char vet[32];
-unsigned char vet2[32];
+unsigned char vet[256];
+unsigned char vet2[256];
 mm_segment_t oldfs;
     int ret;
 
     oldfs = get_fs();
     set_fs(get_ds());
 
-ret = sys_read(fd, vet, 32);
+ret = sys_read(fd, vet, 256);
 hex_to_string(vet, vet2);
-test_skcipher(16, vet2, 'd');
+test_skcipher(256, vet2, 'd');
 
 set_fs(oldfs);
 //memcpy(buf, encript, 16);
