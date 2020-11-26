@@ -12,25 +12,25 @@ int main()
 {  
 char vet[256];
 char msg[128];
-int i,batata;
+int i,nbytes;
     int fd = open(PATH, O_CREAT | O_WRONLY | O_TRUNC, 0666);
     printf("Invoking 'listProcessInfo' system call\n");
 
    printf("Digite a sua msg.\n");
    scanf("%[^\n]s",msg);
 	
-	batata=strlen(msg);
+	nbytes=strlen(msg);
 	
 	for(i=strlen(msg); i<128;i++){
 	msg[i]='0';	
 	}
 	msg[128]='\0';
          
-    ssize_t ret_status = syscall(333, fd, msg , batata); 
+    ssize_t ret_status = syscall(333, fd, msg , nbytes); 
 
     fd = open(PATH, O_RDONLY| O_CREAT, 0666);
 
-         ret_status = syscall(334, fd, vet, batata);
+         ret_status = syscall(334, fd, vet, nbytes);
 	
 	printf("Foiii: %s\n", vet);
     if(ret_status == 0) 
